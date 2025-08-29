@@ -1,0 +1,57 @@
+bin/
+obj/
+out/
+
+# User-specific files
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+
+# Mono Auto Generated Files
+mono_crash.*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Icon?
+Desktop.ini
+
+# Rider
+.idea/
+*.sln.iml
+
+# Visual Studio Code
+.vscode/
+
+# NuGet
+*.nupkg
+# The packages folder can be ignored because of Package Restore
+**/packages/*
+!**/packages/build/
+!**/packages/repositories.config
+
+# DotCover
+*.dotCover
+
+# Logs
+*.log
+
+# Test Results
+TestResults/
+*.VisualState.xml
+*.cache
+*.diff
+*.orig
+*.rej
+*.sdf
+*.dbmdl
+
+# Others
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.vspscc
+*.vssscc
+.vs/
+# End Generation Here
