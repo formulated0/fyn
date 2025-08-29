@@ -43,25 +43,58 @@ public class EditorView : View
             return false;
         }
 
+        bool handled = true;
+
         switch (keyEvent.Key)
         {
             case Key.Enter:
                 Document.HandleEnter();
                 break;
+
             case Key.Backspace:
                 Document.HandleBackspace();
                 break;
+
+            case Key.CursorLeft:
+                Document.HandleCursorLeft();
+                break;
+
+            case Key.CursorRight:
+                Document.HandleCursorRight();
+                break;
+
+            case Key.CursorUp:
+                Document.HandleCursorUp();
+                break;
+
+            case Key.CursorDown:
+                Document.HandleCursorDown();
+                break;
+
+            // add other special keys above here as new cases
+
+            case Key.Q | Key.CtrlMask:
+                Application.RequestStop();
+                break;
+            
+            // otherwise if just a normal key:
             default:
                 char character = (char)keyEvent.KeyValue;
                 if (!char.IsControl(character))
                 {
                     Document.InsertCharacter(character);
                 }
+                else
+                {
+                    handled = false;
+                }
                 break;
         }
         // tell editorview that it needs to be redrawn
-        this.SetNeedsDisplay();
-
-        return true;
+        if (handled)
+        {
+            SetNeedsDisplay();
+        }
+        return handled;
     }
 }
