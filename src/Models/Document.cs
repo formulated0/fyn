@@ -8,11 +8,11 @@ namespace fyn.Models
 
 		// FIXME this might come back to bite me in the ass later but this is set to public readonly for now
 		public readonly List<StringBuilder> Lines;
-		public string FilePath;
+		public string? FilePath;
 
 		// same here
 		public readonly TextPosition CursorPosition;
-		private Selection SelectionRange;
+		public Selection? SelectionRange;
 
 		public Document()
 		{
@@ -24,7 +24,6 @@ namespace fyn.Models
 			FilePath = null;
 			IsDirty = false;
 			SelectionRange = null;
-
 		}
 
 		public int GetLineCount()
@@ -90,44 +89,97 @@ namespace fyn.Models
 			}
 		}
 
-		public void HandleCursorLeft()
+		public void HandleCursorLeft(bool withShift = false)
 		{
-			// if not at the first column
+			// store the original position before doing anything else
+			// create a new object to make sure its unaffected by anything 
+			var originalPosition = new TextPosition(CursorPosition.Line, CursorPosition.Col);
+
 			if (CursorPosition.Col > 0)
 			{
-				CursorPosition.Col -= 1;
+				CursorPosition.Col--;
 			}
-			// if at the first column but not the first line
-			else if (CursorPosition.Col == 0 && CursorPosition.Line > 0)
+			else if (CursorPosition.Line > 0)
 			{
-				CursorPosition.Line -= 1;
+				// move to the end of the previous line
+				CursorPosition.Line--;
 				CursorPosition.Col = Lines[CursorPosition.Line].Length;
 			}
-			// if at the first column and at the first line
-			else if (CursorPosition.Col == 0 && CursorPosition.Line == 0)
+
+			// handle the selection logic
+			if (withShift)
 			{
-				CursorPosition.Line -= 0;
-				CursorPosition.Col = 0;
+				// if we are starting a brand new selection
+				if (SelectionRange == null)
+				{
+					// the selection is from the original position to the new one
+					// create a new textposition just to be safe
+					var newPosition = new TextPosition(CursorPosition.Line, CursorPosition.Col);
+					SelectionRange = new Selection(originalPosition, newPosition);
+				}
+				// if we are extending an existing selection
+				else
+				{
+					// just update the end point to the new cursor position
+					SelectionRange.End = new TextPosition(CursorPosition.Line, CursorPosition.Col);
+				}
+			}
+			else // if shift was not held
+			{
+				// clear any existing selection
+				SelectionRange = null;
 			}
 		}
 
-		public void HandleCursorRight()
+		public void HandleCursorRight(bool withShift = false)
 		{
+			// store the original position before doing anything else
+			// create a new object to make sure its unaffected by anything
+			var originalPosition = new TextPosition(CursorPosition.Line, CursorPosition.Col);
+
 			var line = Lines[CursorPosition.Line];
 			if (CursorPosition.Col < line.Length)
 			{
 				CursorPosition.Col += 1;
 			}
-			// do nothing if at the end of the last line
+			// if at the end of a line but not the last line, wrap to the next one
 			else if (CursorPosition.Col == line.Length && CursorPosition.Line < Lines.Count - 1)
 			{
 				CursorPosition.Line += 1;
 				CursorPosition.Col = 0;
 			}
+
+			// handle the selection logic
+			if (withShift)
+			{
+				// if we are starting a brand new selection
+				if (SelectionRange == null)
+				{
+					// the selection is from the original position to the new one
+					// create a new textposition just to be safe
+					var newPosition = new TextPosition(CursorPosition.Line, CursorPosition.Col);
+					SelectionRange = new Selection(originalPosition, newPosition);
+				}
+				// if we are extending an existing selection
+				else
+				{
+					// just update the end point to the new cursor position
+					SelectionRange.End = new TextPosition(CursorPosition.Line, CursorPosition.Col);
+				}
+			}
+			else // if shift was not held
+			{
+				// clear any existing selection
+				SelectionRange = null;
+			}
 		}
 
-		public void HandleCursorDown()
+		public void HandleCursorDown(bool withShift = false)
 		{
+			// store the original position before doing anything else
+			// create a new object to make sure its unaffected by anything
+			var originalPosition = new TextPosition(CursorPosition.Line, CursorPosition.Col);
+
 			// only move down if not on the last line
 			if (CursorPosition.Line < Lines.Count - 1)
 			{
@@ -139,20 +191,70 @@ namespace fyn.Models
 					CursorPosition.Col = nextLineLength;
 				}
 			}
+
+			if (withShift)
+			{
+				// if we are starting a brand new selection
+				if (SelectionRange == null)
+				{
+					// the selection is from the original position to the new one
+					// create a new textposition just to be safe
+					var newPosition = new TextPosition(CursorPosition.Line, CursorPosition.Col);
+					SelectionRange = new Selection(originalPosition, newPosition);
+				}
+				// if we are extending an existing selection
+				else
+				{
+					// just update the end point to the new cursor position
+					SelectionRange.End = new TextPosition(CursorPosition.Line, CursorPosition.Col);
+				}
+			}
+			else // if shift was not held
+			{
+				// clear any existing selection
+				SelectionRange = null;
+			}
 		}
 
-		public void HandleCursorUp()
+		public void HandleCursorUp(bool withShift = false)
 		{
+			// store the original position before doing anything else
+			// create a new object to make sure its unaffected by anything
+			var originalPosition = new TextPosition(CursorPosition.Line, CursorPosition.Col);
+
 			// only move up if not on the first line
 			if (CursorPosition.Line > 0)
 			{
 				CursorPosition.Line -= 1;
-				int nextLineLength = Lines[CursorPosition.Line].Length;
+				int prevLineLength = Lines[CursorPosition.Line].Length;
 				// clamp the column to the length of the new line
-				if (CursorPosition.Col > nextLineLength)
+				if (CursorPosition.Col > prevLineLength)
 				{
-					CursorPosition.Col = nextLineLength;
+					CursorPosition.Col = prevLineLength;
 				}
+			}
+
+			if (withShift)
+			{
+				// if we are starting a brand new selection
+				if (SelectionRange == null)
+				{
+					// the selection is from the original position to the new one
+					// create a new textposition just to be safe
+					var newPosition = new TextPosition(CursorPosition.Line, CursorPosition.Col);
+					SelectionRange = new Selection(originalPosition, newPosition);
+				}
+				// if we are extending an existing selection
+				else
+				{
+					// just update the end point to the new cursor position
+					SelectionRange.End = new TextPosition(CursorPosition.Line, CursorPosition.Col);
+				}
+			}
+			else // if shift was not held
+			{
+				// clear any existing selection
+				SelectionRange = null;
 			}
 		}
 
