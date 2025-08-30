@@ -39,7 +39,6 @@ namespace fyn
 				Width = Dim.Fill(),
 				Height = Dim.Fill(1),
 				Document = _document,
-				ColorScheme = Colors.Error
 			};
 
 			top.Add(gutterView, statusBarView, editorView);

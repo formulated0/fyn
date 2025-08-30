@@ -71,8 +71,24 @@ public class EditorView : View
                 Document.HandleCursorDown();
                 break;
 
+            // check for backspace with ctrl modifier
+            case Key.Backspace | Key.CtrlMask:
+                Document.HandleCtrlBackspace();
+                break;
+
+            // we have to check for ctrlW since terminals love using that for ctrlBackspace also
+            case Key.W | Key.CtrlMask:
+                Document.HandleCtrlBackspace();
+                break;
+
+            case Key.Tab:
+                Document.HandleTab();
+                break;
+
+
             // add other special keys above here as new cases
 
+            // this has to be uppercase otherwise something TERRIBLE will happen
             case Key.Q | Key.CtrlMask:
                 Application.RequestStop();
                 break;

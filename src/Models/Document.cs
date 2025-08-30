@@ -6,7 +6,7 @@ namespace fyn.Models
 	{
 		public bool IsDirty { get; private set; }
 
-		// this might come back to bite me in the ass later but this is set to public readonly for now
+		// FIXME this might come back to bite me in the ass later but this is set to public readonly for now
 		public readonly List<StringBuilder> Lines;
 		public string FilePath;
 
@@ -37,6 +37,7 @@ namespace fyn.Models
 			int wordCount = 0;
 			foreach (var line in Lines)
 			{
+				// split by words and remove double spaces if needed
 				string[] wordsOnLine = line.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries);
 				wordCount += wordsOnLine.Length;
 			}
@@ -155,9 +156,63 @@ namespace fyn.Models
 			}
 		}
 
+		// delete the word before the cursor
 		public void HandleCtrlBackspace()
 		{
-			
+			// if at the very start of the document do nothing
+			if (CursorPosition.Line == 0 && CursorPosition.Col == 0)
+				return;
+
+			var line = Lines[CursorPosition.Line];
+			int col = CursorPosition.Col;
+			int lineIdx = CursorPosition.Line;
+
+			// if at the start of a line (but not first line) join with previous line
+			if (col == 0 && lineIdx > 0)
+			{
+				var prevLine = Lines[lineIdx - 1];
+				int prevLen = prevLine.Length;
+				prevLine.Append(line);
+				Lines.RemoveAt(lineIdx);
+				CursorPosition.Line -= 1;
+				CursorPosition.Col = prevLen;
+				IsDirty = true;
+				// set up to delete word in the joined line
+				line = prevLine;
+				col = prevLen;
+				lineIdx--;
+			}
+
+			// find the start of the previous word
+			int start = col;
+			// skip any whitespace to the left of the cursor
+			while (start > 0 && char.IsWhiteSpace(line[start - 1]))
+				start--;
+			// skip non-whitespace (the word itself)
+			while (start > 0 && !char.IsWhiteSpace(line[start - 1]))
+				start--;
+
+			int lengthToRemove = col - start;
+			if (lengthToRemove > 0)
+			{
+				line.Remove(start, lengthToRemove);
+				CursorPosition.Col = start;
+				IsDirty = true;
+			}
+		}
+
+		public void HandleTab()
+		{
+			var tab = "    ";
+			var line = Lines[CursorPosition.Line];
+			if (CursorPosition.Col > line.Length)
+			{
+				CursorPosition.Col = line.Length;
+			}
+			line.Insert(CursorPosition.Col, tab);
+			CursorPosition.Col += 4;
+			IsDirty = true;
+
 		}
 	}
 }
