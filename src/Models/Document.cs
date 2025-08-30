@@ -6,12 +6,12 @@ namespace fyn.Models
 	{
 		public bool IsDirty { get; private set; }
 
-		// FIXME this might come back to bite me in the ass later but this is set to public readonly for now
-		public readonly List<StringBuilder> Lines;
+		// FIXME this might come back to bite me in the ass later but this is set to public for now
+		public List<StringBuilder> Lines;
 		public string? FilePath;
 
 		// same here
-		public readonly TextPosition CursorPosition;
+		public TextPosition CursorPosition; 
 		public Selection? SelectionRange;
 
 		public Document()
@@ -25,6 +25,61 @@ namespace fyn.Models
 			IsDirty = false;
 			SelectionRange = null;
 		}
+
+		private TextPosition DeleteSelection()
+		{
+			if (SelectionRange == null) return CursorPosition;
+
+			TextPosition selectionStart = null;
+			TextPosition selectionEnd = null;
+			bool hasSelection = SelectionRange != null;
+			if (hasSelection)
+			{
+				// normalise the selection range
+				// this line is so unreadable icl
+				if (SelectionRange.Start.Line < SelectionRange.End.Line || (SelectionRange.Start.Line == SelectionRange.End.Line && SelectionRange.Start.Col < SelectionRange.End.Col))
+				{
+					selectionStart = SelectionRange.Start;
+					selectionEnd = SelectionRange.End;
+				}
+				else
+				{
+					selectionStart = SelectionRange.End;
+					selectionEnd = SelectionRange.Start;
+				}
+			}
+			
+			// if deletion is just one line
+			if (selectionStart.Line == selectionEnd.Line)
+			{
+				// just remove all characters between the start of the selection and the end of it
+				var line = Lines[selectionStart.Line];
+				line.Remove(selectionStart.Col, selectionEnd.Col - selectionStart.Col);
+			}
+			else
+			{	// if deletion is multiple lines
+				var startLine = Lines[selectionStart.Line];
+				var endLine = Lines[selectionEnd.Line];
+
+				// remove everything from the start of the selection of the first line
+				startLine.Remove(selectionStart.Col, startLine.Length - selectionStart.Col);
+				// remove everything from the end of the selection of the last line
+				endLine.Remove(0, selectionEnd.Col);
+
+				// append the two partial lines together
+				startLine.Append(endLine.ToString());
+
+				// get the number of lines that we removed
+				int linesToRemoveCount = selectionEnd.Line - selectionStart.Line;
+				// remove the number of lines from the list in order to keep it neat
+				Lines.RemoveRange(selectionStart.Line + 1, linesToRemoveCount);
+			}
+
+			IsDirty = true;
+			SelectionRange = null; // make selectionrange empty again since we have no selection anymore
+			return selectionStart; // return the new cursor position
+
+	}
 
 		public int GetLineCount()
 		{
@@ -45,6 +100,12 @@ namespace fyn.Models
 
 		public void InsertCharacter(char c)
 		{
+			// check if we have a selection
+			if (SelectionRange != null)
+			{
+				CursorPosition = DeleteSelection();
+			}
+
 			var line = Lines[CursorPosition.Line];
 			if (CursorPosition.Col > line.Length)
 			{
@@ -57,36 +118,55 @@ namespace fyn.Models
 
 		public void HandleEnter()
 		{
+			// check if we have a selection
+			if (SelectionRange != null)
+			{
+				CursorPosition = DeleteSelection();
+				HandleEnter();
+				return;
+			}
+
 			var line = Lines[CursorPosition.Line];
 			string endOfLineText = line.ToString().Substring(CursorPosition.Col);
+
 			line.Remove(CursorPosition.Col, line.Length - CursorPosition.Col);
+
 			var newLine = new StringBuilder(endOfLineText);
+
 			Lines.Insert(CursorPosition.Line + 1, newLine);
 			CursorPosition.Line += 1;
 			CursorPosition.Col = 0;
+
 			IsDirty = true;
 		}
 
 		public void HandleBackspace()
 		{
+			// check if we have a selection
+			if (SelectionRange != null)
+			{
+				CursorPosition = DeleteSelection();
+				return;
+			}
+
 			if (CursorPosition.Col > 0)
-			{
-				var line = Lines[CursorPosition.Line];
-				line.Remove(CursorPosition.Col - 1, 1);
-				CursorPosition.Col -= 1;
-				IsDirty = true;
-			}
-			else if (CursorPosition.Col == 0 && CursorPosition.Line > 0)
-			{
-				var line = Lines[CursorPosition.Line];
-				var prevLine = Lines[CursorPosition.Line - 1];
-				int prevLineLength = prevLine.Length;
-				prevLine.Append(line);
-				Lines.Remove(line);
-				CursorPosition.Line -= 1;
-				CursorPosition.Col = prevLineLength;
-				IsDirty = true;
-			}
+				{
+					var line = Lines[CursorPosition.Line];
+					line.Remove(CursorPosition.Col - 1, 1);
+					CursorPosition.Col -= 1;
+					IsDirty = true;
+				}
+				else if (CursorPosition.Col == 0 && CursorPosition.Line > 0)
+				{
+					var line = Lines[CursorPosition.Line];
+					var prevLine = Lines[CursorPosition.Line - 1];
+					int prevLineLength = prevLine.Length;
+					prevLine.Append(line);
+					Lines.Remove(line);
+					CursorPosition.Line -= 1;
+					CursorPosition.Col = prevLineLength;
+					IsDirty = true;
+				}
 		}
 
 		public void HandleCursorLeft(bool withShift = false)
